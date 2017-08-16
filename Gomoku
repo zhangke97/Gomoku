@@ -1,0 +1,199 @@
+
+
+    #include<cstdio>
+    #include<cstdlib>
+    #include<cstring>
+    #include<termios.h>
+    
+    #define CHESS    5    //棋子数
+    #define CELLSLEN 16    //除去边界的空格数
+    #define BOARD (CELLSLEN*2+1) //边界长度
+    
+    void envir(); //初始化棋盘构建
+    void print(); //棋盘显示
+    int Icon();   //光标移动和摆放棋子
+    int checkChess(); //检查一方是否胜利
+    int getch();  //终端的键盘操作
+
+    const char* board[BOARD][BOARD] = {0};//相应位置的棋子
+    int check[CELLSLEN][CELLSLEN] = {0};  //检测该位置是否有棋子
+    int turn = -1;          //  -1 = white, 1 = black , 白棋先走
+    int row = 1, col = 1, con;
+    
+    const char * BLACK = "◎", * WHITE = "◉", * POS = "¤";//¤ 定位光标
+    
+    const char * LT   ="┌",  * TOP   ="┬",   * RT   ="┐";
+    
+    const char * LEFT ="├",  * CENTER="┼",   * RIGHT="┤";
+    
+    const char * LF   ="└",  * FOOT  ="┴",   * RF   ="┘";
+    
+    const char * SPACE=" ";
+
+    int main(void)
+    {
+        int s;
+        envir();  //构建棋盘
+        s = Icon(); //运行游戏
+        
+        if(s){//由turn的取值决定赢家
+            if(turn == 1)
+                printf("\n-----White Won-----\n");
+            else
+                printf("\n-----Black Won-----\n");
+        }
+        else
+            printf("\n-----Tied-----\n");
+        return 0;
+    }
+
+    void envir(){//构建棋盘
+        for(int j = 0; j < BOARD; j++)
+            for(int k = 0; k < BOARD; k++)
+                board[j][k] = SPACE;  //棋盘初始化，全部置为空格
+        
+        board[0][0] = LT;
+        board[0][BOARD-1] = RT;
+        board[BOARD-1][0] = LF;
+        board[BOARD-1][BOARD-1] = RF;
+        for(int i = 2; i < BOARD-2; i+=2){//   +=2 的目的是留有空格
+            board[0][i] = TOP;
+            board[BOARD-1][i] = FOOT;
+            board[i][0] = LEFT;
+            board[i][BOARD-1] = RIGHT;
+        }
+        for(int j = 2; j < BOARD-2; j+=2)
+            for(int k = 2; k < BOARD-2; k+=2)
+                board[j][k] = CENTER;
+    }
+
+    void print(){ //打印棋盘
+        system("clear");  //其实只是把之前的内容拉上到看不到的地方
+        for(int j = 0; j < BOARD; j++){  //列
+            for(int k = 0; k < BOARD; k++)  //行
+                printf("%s ",board[j][k]);
+            putchar('\n');
+        }
+        if(turn == 1)//当前的选手及当前位置
+            printf("  %s  Black turn\n",BLACK);
+        else
+            printf("  %s  White turn\n",WHITE);
+        printf("    POS(%d,%d)\n",(row+1)/2,(col+1)/2);
+    }
+
+    int checkChess(){ 
+        bool judge;
+        int pres;
+        for(int j = 0; j < CELLSLEN; j++)  //按列行检查
+            for(int k = 0; k < CELLSLEN; k++)
+                if(check[j][k] != 0){  //有棋子，检测
+                    pres = check[j][k];
+                    judge = true;
+                    if(j <= CELLSLEN - CHESS && k <= CELLSLEN - CHESS){
+                        for(int l = 1; l < CHESS ; l++)
+                            if(check[j+l][k+l] != pres)   //右斜不成功
+                                judge = false;
+                        if(judge == true)
+                            return 1;
+                    }
+                    judge = true;
+                    if(j <= CELLSLEN - CHESS && k >= CHESS - 1){
+                        for(int l = 1; l < CHESS; l++)
+                            if(check[j+l][k-l] != pres)   //左斜不成功
+                                judge = false;
+                        if(judge == true)
+                            return 1;
+                    }
+                    judge = true;
+                    if(k <= CELLSLEN - CHESS){
+                        for(int l = 1; l < CHESS; l++)
+                            if(check[j][k+l] != pres)     //垂直不成功
+                                judge = false;
+                        if(judge == true)
+                            return 1;
+                    }
+                    judge = true;
+                    if(j <= CELLSLEN - CHESS){
+                        for(int l = 1; l < CHESS; l++)
+                            if(check[j+l][k] != pres)     //水平不成功
+                                judge = false;
+                        if(judge == true)
+                            return 1; 
+                    }
+                }
+        return 0;
+    }
+
+    #define NOTCHESS board[row][col] != BLACK && board[row][col] != WHITE
+    int Icon() //游戏主体
+    {
+        int count = 0;
+        board[row][col] = POS; //坐标点
+        print();  //先打印一次棋盘
+        while((con = getch()) != 0x1b) //Esc键，事实证明方向键也可以终止游戏
+        {
+            if(con == 'w' || con == 's' || con == 'a' || con == 'd' || con == ' ')
+            { //用  w a s d 控制方向
+                if(con != ' ' && board[row][col] == POS && NOTCHESS)
+                    board[row][col] = SPACE;
+                switch(con)
+                {
+                    case 'w':
+                        if(row > 1)   row -= 2;
+                        if(NOTCHESS)  board[row][col] = POS;
+                        break;
+                    case 's':
+                        if(row < BOARD - 2)   row += 2;
+                        if(NOTCHESS)  board[row][col] = POS;
+                        break;
+                    case 'a':
+                        if(col > 1)   col -= 2;
+                        if(NOTCHESS)  board[row][col] = POS;
+                        break;
+                    case 'd':
+                        if(col < BOARD - 2)   col += 2;
+                        if(NOTCHESS)  board[row][col] = POS;
+                        break;
+                    case ' ':{  //落子
+                        if(board[row][col] == BLACK || board[row][col] == WHITE)
+                            break;
+                        else{
+                            if(turn == -1){  //白棋
+                                board[row][col] = WHITE;
+                                check[(row-1)/2][(col-1)/2] = -1;
+                            }
+                            else if(turn == 1){  //黑棋
+                                board[row][col] = BLACK;
+                                check[(row-1)/2][(col-1)/2] = 1 ;
+                            }
+                            turn = -turn;
+                            count++; //回合记录
+                        }    
+                        break;
+                    }
+                    default : break;	
+                }
+            }
+            print(); //不断刷新棋盘
+            if(count == CELLSLEN * CELLSLEN)  //棋盘被占满，游戏结束
+                return 0;
+            if(checkChess()) //有一方胜利，游戏结束
+                return 1;
+        }
+        return 0; //这里有改动
+    }
+
+    int getch(){
+        struct termios tm,tm_old;
+        int fd = 0,ch;
+        if(tcgetattr(fd,&tm) < 0)
+            return -1;
+        tm_old = tm;
+        cfmakeraw(&tm);
+        if(tcsetattr(fd,TCSANOW,&tm) < 0)
+            return -1;
+        ch = getchar();
+        if(tcsetattr(fd,TCSANOW,&tm_old) < 0)
+            return -1;
+        return ch;
+    }
